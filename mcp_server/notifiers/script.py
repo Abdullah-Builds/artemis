@@ -15,6 +15,7 @@
 """Custom Script / Command Hook Notifier for universal IDE and editor integration."""
 
 import logging
+import shlex
 import os
 import subprocess
 from typing import Any
@@ -67,14 +68,16 @@ class ScriptNotifier(BaseNotifier):
         trace_id = (payload or {}).get("trace_id", "")
         formatted_title = title or f"Artemis Task {event_type.capitalize()}"
 
-        # Replace template placeholders safely
+        # Shell-escape every substituted value so task/result content that
+        # contains quotes, backticks, `$( )`, `;`, etc. cannot break out of
+        # the configured command template and inject additional commands.
         try:
             cmd = (
-                cmd_template.replace("{title}", str(formatted_title))
-                .replace("{message}", str(message))
-                .replace("{conversation_id}", str(conversation_id))
-                .replace("{event_type}", str(event_type))
-                .replace("{trace_id}", str(trace_id))
+                cmd_template.replace("{title}", shlex.quote(str(formatted_title)))
+                .replace("{message}", shlex.quote(str(message)))
+                .replace("{conversation_id}", shlex.quote(str(conversation_id)))
+                .replace("{event_type}", shlex.quote(str(event_type)))
+                .replace("{trace_id}", shlex.quote(str(trace_id)))
             )
             subprocess.run(
                 cmd,
